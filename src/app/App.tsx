@@ -717,6 +717,71 @@ function ProcessSection() {
 }
 
 // ─── Manufacturing ────────────────────────────────────────────────────────────
+function useFactoryImages() {
+  const [images, setImages] = useState<string[]>([]);
+  useEffect(() => {
+    fetch("https://api.github.com/repos/yihuan0208/static-assets/contents/livspacee-web/factory")
+      .then(r => r.json())
+      .then((files: { name: string; download_url: string }[]) => {
+        const imgs = files
+          .filter(f => /\.(jpe?g|png|webp)$/i.test(f.name))
+          .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+          .slice(0, 5)
+          .map(f => f.download_url);
+        setImages(imgs);
+      })
+      .catch(() => setImages([
+        "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/factory/1.jpg",
+      ]));
+  }, []);
+  return images;
+}
+
+function FactoryCarousel() {
+  const images = useFactoryImages();
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (images.length <= 1) return;
+    const t = setInterval(() => setIdx(i => (i + 1) % images.length), 5000);
+    return () => clearInterval(t);
+  }, [images.length]);
+
+  if (!images.length) return (
+    <div style={{ position: "relative", minHeight: 480, background: "#111" }} />
+  );
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", minHeight: 480, alignSelf: "stretch" }}>
+      {images.map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt={`Factory ${i + 1}`}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
+            opacity: i === idx ? 1 : 0,
+            transition: "opacity 1s ease-in-out",
+          }}
+        />
+      ))}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(26,25,23,0.15)", pointerEvents: "none" }} />
+      {images.length > 1 && (
+        <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6 }}>
+          {images.map((_, i) => (
+            <button key={i} onClick={() => setIdx(i)} style={{ width: i === idx ? 20 : 6, height: 6, borderRadius: 3, background: i === idx ? "#B8906A" : "rgba(255,255,255,0.4)", border: "none", cursor: "pointer", transition: "all 0.3s", padding: 0 }} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ManufacturingSection() {
   const caps = [
     "Solid wood and engineered timber construction",
@@ -729,10 +794,7 @@ function ManufacturingSection() {
   return (
     <section id="capabilities" style={{ background: "#1A1917", overflow: "hidden" }}>
       <div className="manuf-grid">
-        <div style={{ position: "relative", minHeight: 480 }}>
-          <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=900&h=700&fit=crop&auto=format" alt="Manufacturing workshop" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-          <div style={{ position: "absolute", inset: 0, background: "rgba(26,25,23,0.2)" }} />
-        </div>
+        <FactoryCarousel />
         <div className="section-pad">
           <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 11, letterSpacing: "0.25em", textTransform: "uppercase", color: "#B8906A", fontWeight: 500, marginBottom: 20 }}>Manufacturing Capability</p>
           <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 300, fontSize: "clamp(32px,3.5vw,52px)", color: "#fff", lineHeight: 1.15, margin: "0 0 24px 0" }}>
