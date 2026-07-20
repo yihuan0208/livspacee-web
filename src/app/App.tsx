@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ArrowRight, ChevronLeft, ChevronRight, MapPin, Mail, Phone, Check } from "lucide-react";
+import * as XLSX from "xlsx";
 
 // ─── Global responsive styles ──────────────────────────────────────────────────
 function GlobalStyles() {
@@ -132,10 +133,91 @@ const WHY_ITEMS = [
   },
 ];
 
+// ─── Runtime Excel data hook ───────────────────────────────────────────────────
+const XLSX_URL = "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-info.xlsx";
+const IMG_BASE = "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images";
+
+const FOLDER_IMAGES: Record<string, string[]> = {
+  A: ["A1.jpeg","A2.jpeg","A3.jpeg","A4.jpeg","A5.jpeg"],
+  B: ["B1.jpg","B2.jpg","B3.jpg","B4.jpg","B5.jpg"],
+  C: ["C1.png","C2.jpg","C3.jpg","C4.jpeg","C5.jpeg","C6.png","C7.jpg","C8.jpg"],
+  D: ["D1.jpg","D2.png","D3.png","D4.png","D5.png"],
+  E: ["E1.jpeg","E2.jpeg","E3.jpeg","E4.jpeg","E5.jpeg","E6.jpeg"],
+  F: ["F1.jpeg","F2.jpeg","F3.jpeg","F4.jpeg","F5.jpeg","F6.jpeg"],
+};
+
+function useProjectData() {
+  const [projects, setProjects] = useState<typeof PROJECTS>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(XLSX_URL)
+      .then(r => r.arrayBuffer())
+      .then(buf => {
+        const wb = XLSX.read(buf, { type: "array" });
+        const rows: string[][] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: "" });
+
+        // Group rows by project number; continuation rows have empty col 0
+        const map = new Map<string, { meta: string[]; advantages: { dimension: string; desc: string }[] }>();
+        let currentKey = "";
+        for (const row of rows) {
+          const no = String(row[0]).trim();
+          const isProjectRow = no !== "" && !isNaN(Number(no)) && Number(no) > 0;
+          if (isProjectRow) {
+            currentKey = no;
+            if (!map.has(currentKey)) {
+              map.set(currentKey, { meta: row as string[], advantages: [] });
+            }
+          }
+          if (!currentKey) continue;
+          const dim = String(row[9] || "").trim();
+          const desc = String(row[11] || "").trim();
+          if (dim && desc) {
+            map.get(currentKey)!.advantages.push({ dimension: dim, desc });
+          }
+        }
+
+        const folders = Object.keys(FOLDER_IMAGES);
+        const parsed = Array.from(map.values()).map(({ meta, advantages }, i) => {
+          const folder = folders[i] || "A";
+          const imgs = FOLDER_IMAGES[folder].map(f => `${IMG_BASE}/${folder}/${f}`);
+          return {
+            id: i + 1,
+            type: String(meta[2] || "Hotel"),
+            name: String(meta[1] || ""),
+            location: String(meta[4] || ""),
+            rooms: meta[5] ? `${meta[5]} ${String(meta[2]).toLowerCase().includes("apartment") ? "units" : "rooms"}` : "",
+            year: String(meta[3] || ""),
+            desc: advantages[0]?.desc || "",
+            scope: String(meta[7] || ""),
+            advantages,
+            cover: imgs[0],
+            images: imgs,
+          };
+        });
+
+        setProjects(parsed);
+        setLoading(false);
+      })
+      .catch(() => {
+        setProjects(PROJECTS);
+        setLoading(false);
+      });
+  }, []);
+
+  return { projects, loading };
+}
+
 const PROJECTS = [
   {
-    id: 1, type: "Hotel", name: "The Meridian Residences", location: "Dubai, UAE", rooms: "412 rooms", year: "2023",
-    desc: "Full guestroom and suite furniture package for a five-star business hotel, including custom joinery, headboards, and in-room desking.",
+    id: 1, type: "Serviced Apartment", name: "CASA Meridian Residence", location: "Cambodia", rooms: "40 units", year: "2023",
+    desc: "We develop standardized and modular FF&E systems covering LOFT, Twin and King bedroom layouts. Uniform QC standards are applied across all units, supporting mass delivery with on-site installation rework rate controlled below 2%.",
+    scope: "FF&E Scheme Design · Centralized Sourcing · On-site Installation & Handover",
+    advantages: [
+      { dimension: "Mass Production Delivery & QC Management", desc: "We develop standardized and modular FF&E systems covering LOFT, Twin and King bedroom layouts. Uniform QC standards are applied across all units, supporting mass delivery with on-site installation rework rate controlled below 2%." },
+      { dimension: "Full Lifecycle O&M Cost Advantage", desc: "Commercial-grade abrasion-resistant fabrics and fixed modular furniture reduce wear and tear during room turnover. Client's annual FF&E maintenance expense is reduced by 30%." },
+      { dimension: "Cost Advantage via Direct Sourcing from China", desc: "Leveraging our stable China supply chain, the overall FF&E budget is 15% lower than industry benchmarks of equivalent scale. End-to-end management from design to handover minimizes cross-party communication costs." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/A/A1.jpeg",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/A/A1.jpeg",
@@ -146,8 +228,14 @@ const PROJECTS = [
     ],
   },
   {
-    id: 2, type: "Hotel", name: "Harbour Grand Kuala Lumpur", location: "Kuala Lumpur, Malaysia", rooms: "228 rooms", year: "2022",
-    desc: "Bespoke bedroom and lounge furniture for a four-star city hotel, engineered to meet international fire-retardancy standards.",
+    id: 2, type: "Hotel", name: "Bassac Hotel & Residence", location: "Malaysia", rooms: "128 rooms", year: "2022",
+    desc: "We own mature full-cycle management capabilities for international hotel projects. 128 sets of guest room furniture are mass-customized, with coordinated control over manufacturing, cross-border shipping, customs clearance and on-site installation to guarantee on-time premium delivery.",
+    scope: "Custom Guest Room Furniture · Public Area FF&E Customization · Cross-border Logistics & Customs Clearance · International Compliance Control",
+    advantages: [
+      { dimension: "End-to-end Cross-border Project Management", desc: "128 sets of guest room furniture are mass-customized, with coordinated control over manufacturing, cross-border shipping, customs clearance and on-site installation to guarantee on-time premium delivery." },
+      { dimension: "Globally Compliant Quality Control System", desc: "All products comply with international flammability standards including BS 5852 and CAL 117. Commercial heavy-duty fabrics and reinforced frames lower long-term maintenance and replacement costs." },
+      { dimension: "Cost Advantage via Direct Sourcing from China", desc: "Leveraging our stable China supply chain, the overall FF&E budget is 15% lower than industry benchmarks of equivalent scale. End-to-end management from design to handover minimizes cross-party communication costs." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/B/B1.jpg",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/B/B1.jpg",
@@ -158,8 +246,12 @@ const PROJECTS = [
     ],
   },
   {
-    id: 3, type: "Serviced Apartment", name: "Civic Living Suites", location: "Singapore", rooms: "186 units", year: "2023",
-    desc: "Complete apartment furniture package for a premium serviced residence, balancing residential comfort with hospitality-grade durability.",
+    id: 3, type: "Hotel", name: "Howard Johnson by Wyndham", location: "China", rooms: "66 rooms", year: "2022",
+    desc: "We deliver consistent FF&E solutions for all functional zones including standard guest rooms, all-day dining restaurants, VIP private suites and executive lounges. Unified design control maintains consistent aesthetic language for mixed hotel operations.",
+    scope: "Custom Guest Room Furniture · Public Area FF&E · F&B Furnishings · Soft Furnishing Implementation",
+    advantages: [
+      { dimension: "Integrated Full-space Delivery Capacity", desc: "We deliver consistent FF&E solutions covering standard guest rooms, all-day dining restaurants, VIP private suites and executive lounges. Unified design control over furniture and soft furnishings maintains consistent aesthetic language for mixed hotel operations." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/C/C1.png",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/C/C1.png",
@@ -173,8 +265,14 @@ const PROJECTS = [
     ],
   },
   {
-    id: 4, type: "Serviced Apartment", name: "Riva Residences Prague", location: "Prague, Czech Republic", rooms: "97 units", year: "2022",
-    desc: "European-style serviced apartment furnishing with custom soft goods, casegoods, and coordinated accessories across all unit categories.",
+    id: 4, type: "Hotel", name: "Luxen City Hotel", location: "China", rooms: "87 rooms", year: "2023",
+    desc: "One-stop FF&E solution covering lobby, F&B outlets and guest rooms. Consistent material palette, color system and design language create cohesive spatial aesthetics that satisfy high-end business hotel operation standards.",
+    scope: "Integrated FF&E Design · Mass Custom Furniture Manufacturing · Soft Furnishing Rollout",
+    advantages: [
+      { dimension: "Cross-sector Unified Design Capability", desc: "One-stop FF&E solution covering lobby, F&B outlets and guest rooms. Consistent material palette, color system and design language create cohesive spatial aesthetics that satisfy high-end business hotel operation standards." },
+      { dimension: "Scaled Customization & Budget Control", desc: "Backed by reliable upstream manufacturers, synchronous production and unified QC for large public zones and bulk guest room FF&E. Modular standardized design reduces customization waste and keeps expenditure within budget without compromising premium quality." },
+      { dimension: "Cost Advantage via Direct Sourcing from China", desc: "Leveraging our stable China supply chain, the overall FF&E budget is 15% lower than industry benchmarks of equivalent scale. End-to-end management from design to handover minimizes cross-party communication costs." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/D/D1.jpg",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/D/D1.jpg",
@@ -185,8 +283,12 @@ const PROJECTS = [
     ],
   },
   {
-    id: 5, type: "Hotel", name: "Skyline Business Hotel", location: "Shanghai, China", rooms: "356 rooms", year: "2024",
-    desc: "Large-scale hotel FF&E package including custom lobby furniture, all-day dining seating, guestroom casegoods and soft furnishings.",
+    id: 5, type: "Hotel", name: "Skyline Business Hotel", location: "China", rooms: "86 rooms", year: "2024",
+    desc: "Full-range FF&E coverage for public spaces, restaurants and guest rooms. We provide turnkey general contracting services including design development, mass production and on-site installation to support rapid expansion of hotel chain brands.",
+    scope: "Custom Public Area Furniture · F&B Furnishings · Integrated Guest Room FF&E Delivery",
+    advantages: [
+      { dimension: "Full-category FF&E General Contracting Capacity", desc: "Full-range FF&E coverage for public spaces, restaurants and guest rooms. Turnkey general contracting services including design development, mass production and on-site installation. Timely and consistent delivery for 86 rooms supports rapid expansion of hotel chain brands." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/E/E1.jpeg",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/E/E1.jpeg",
@@ -198,8 +300,12 @@ const PROJECTS = [
     ],
   },
   {
-    id: 6, type: "Serviced Apartment", name: "Urban Stay Bangkok", location: "Bangkok, Thailand", rooms: "124 units", year: "2023",
-    desc: "Mid-scale serviced apartment FF&E including modular living room units, custom-built wardrobes, and coordinated kitchen furniture.",
+    id: 6, type: "Serviced Apartment", name: "Urban Stay Bangkok", location: "Thailand", rooms: "60 units", year: "2023",
+    desc: "Proven track record delivering serviced apartments across Southeast Asia. We coordinate mass production, cross-border shipping, customs clearance and on-site installation under unified FF&E standards, with synchronized delivery of guest rooms and common areas.",
+    scope: "Custom Guest Room Furniture · Public Area Soft Furnishings · Cross-border Logistics & Handover",
+    advantages: [
+      { dimension: "Southeast Asia Cross-border Delivery System", desc: "Proven track record delivering serviced apartments across Southeast Asia. We coordinate mass production of 60 units, cross-border shipping, customs clearance and on-site installation under unified FF&E standards. Synchronized delivery of guest rooms and common areas fits the operational model of overseas long-stay rental apartments." },
+    ],
     cover: "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/F/F1.jpeg",
     images: [
       "https://raw.githubusercontent.com/yihuan0208/static-assets/main/livspacee-web/case-images/F/F1.jpeg",
@@ -444,15 +550,44 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
 
         {/* Project info */}
         <div style={{ padding: "40px 40px 48px" }}>
+          {/* Type + meta */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8906A", fontWeight: 500 }}>{project.type}</span>
-            <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, color: "#7A756C" }}>{project.rooms} · {project.year}</span>
+            <span style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, color: "#7A756C" }}>{project.rooms}</span>
           </div>
-          <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 300, fontSize: 28, color: "#1A1917", margin: "0 0 8px 0" }}>{project.name}</h2>
-          <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, color: "#7A756C", margin: "0 0 20px 0", display: "flex", alignItems: "center", gap: 4 }}>
-            <MapPin size={12} /> {project.location}
+
+          {/* Name */}
+          <h2 style={{ fontFamily: "'Fraunces',serif", fontWeight: 300, fontSize: 28, color: "#1A1917", margin: "0 0 10px 0" }}>{project.name}</h2>
+
+          {/* Location · Year */}
+          <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, color: "#7A756C", margin: "0 0 28px 0", display: "flex", alignItems: "center", gap: 6 }}>
+            <MapPin size={12} /> {project.location} · {project.year}
           </p>
-          <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 300, fontSize: 14, color: "#5A5550", lineHeight: 1.75, margin: 0 }}>{project.desc}</p>
+
+          {/* Scope of Services */}
+          <div style={{ marginBottom: 28 }}>
+            <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600, color: "#1A1917", margin: "0 0 10px 0" }}>Scope of Services</p>
+            <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 300, color: "#5A5550", lineHeight: 1.7, margin: 0 }}>{project.scope || "—"}</p>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: "rgba(26,25,23,0.08)", margin: "0 0 28px 0" }} />
+
+          {/* Core Advantages */}
+          <div>
+            <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", fontWeight: 600, color: "#1A1917", margin: "0 0 16px 0" }}>Core Advantages</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {(project.advantages || []).map((a, i) => (
+                <div key={i} style={{ display: "flex", gap: 16 }}>
+                  <div style={{ width: 3, flexShrink: 0, background: "#B8906A", borderRadius: 2, marginTop: 2 }} />
+                  <div>
+                    <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 600, color: "#1A1917", margin: "0 0 6px 0" }}>{a.dimension}</p>
+                    <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, fontWeight: 300, color: "#5A5550", lineHeight: 1.75, margin: 0 }}>{a.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -462,6 +597,7 @@ function ProjectModal({ project, onClose }: { project: typeof PROJECTS[0]; onClo
 // ─── Projects ─────────────────────────────────────────────────────────────────
 function ProjectsSection() {
   const [open, setOpen] = useState<typeof PROJECTS[0] | null>(null);
+  const { projects, loading } = useProjectData();
 
   return (
     <section id="projects" className="section-pad" style={{ background: "#F0EDE7" }}>
@@ -471,8 +607,12 @@ function ProjectsSection() {
           Project <em>experience</em>
         </h2>
 
+        {loading && (
+          <div style={{ textAlign: "center", padding: "60px 0", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 13, color: "#7A756C" }}>Loading projects…</div>
+        )}
+
         <div className="projects-grid">
-          {PROJECTS.map(p => (
+          {projects.map(p => (
             <div key={p.id} className="project-card" onClick={() => setOpen(p)}>
               <div className="card-img">
                 <img src={p.cover} alt={p.name} />
