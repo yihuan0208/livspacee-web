@@ -850,8 +850,8 @@ function ContactSection() {
               Whether you have a live project brief or are in early planning, we welcome the opportunity to understand your requirements.
             </p>
             {[
-              { icon: <Mail size={14} />, l: "Email", v: "projects@arvofurnishing.com" },
-              { icon: <Phone size={14} />, l: "WhatsApp", v: "+86 138 0000 0000" },
+              { icon: <Mail size={14} />, l: "Email", v: "info@livspacee.com" },
+              { icon: <Phone size={14} />, l: "WhatsApp", v: "+86 135 2648 6264" },
               { icon: <MapPin size={14} />, l: "Office", v: "Guangdong, China · Available worldwide" },
             ].map(c => (
               <div key={c.l} style={{ display: "flex", gap: 14, marginBottom: 22 }}>
