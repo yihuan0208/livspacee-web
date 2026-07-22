@@ -828,11 +828,43 @@ function ManufacturingSection() {
 }
 
 // ─── Contact ──────────────────────────────────────────────────────────────────
+const WEB3FORMS_KEY = "806ac10e-e6ba-4809-8c49-286b49e796c9"; // replace with your key from web3forms.com
+
 function ContactSection() {
   const [form, setForm] = useState({ name: "", company: "", email: "", type: "Hotel", message: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const handle = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [e.target.name]: e.target.value });
-  const submit = (e: React.FormEvent) => { e.preventDefault(); setSubmitted(true); };
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          access_key: WEB3FORMS_KEY,
+          name: form.name,
+          company: form.company,
+          email: form.email,
+          project_type: form.type,
+          message: form.message,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSubmitted(true);
+      } else {
+        setError("Submission failed. Please try again or email us directly.");
+      }
+    } catch {
+      setError("Network error. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const base: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans',sans-serif", fontWeight: 300, fontSize: 14, color: "#1A1917", background: "transparent", border: "none", borderBottom: "1px solid rgba(26,25,23,0.15)", padding: "10px 0", outline: "none", width: "100%" };
   const lbl: React.CSSProperties = { fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 10, letterSpacing: "0.08em", textTransform: "uppercase", color: "#7A756C", fontWeight: 500, display: "block", marginBottom: 6 };
@@ -895,8 +927,11 @@ function ContactSection() {
                   <label style={lbl}>Tell us about your project</label>
                   <textarea name="message" rows={4} value={form.message} onChange={handle} placeholder="Scale, timeline, requirements..." style={{ ...base, resize: "none" }} />
                 </div>
-                <button type="submit" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "15px 28px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 500, background: "#1A1917", color: "#fff", border: "none", cursor: "pointer", marginTop: 4 }}>
-                  Send Enquiry <ArrowRight size={13} />
+                {error && (
+                  <p style={{ fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, color: "#c0392b", margin: 0 }}>{error}</p>
+                )}
+                <button type="submit" disabled={loading} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "15px 28px", fontFamily: "'Plus Jakarta Sans',sans-serif", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", fontWeight: 500, background: loading ? "#7A756C" : "#1A1917", color: "#fff", border: "none", cursor: loading ? "not-allowed" : "pointer", marginTop: 4, transition: "background 0.2s" }}>
+                  {loading ? "Sending…" : (<span style={{ display: "flex", alignItems: "center", gap: 10 }}>Send Enquiry <ArrowRight size={13} /></span>)}
                 </button>
               </form>
             )}
